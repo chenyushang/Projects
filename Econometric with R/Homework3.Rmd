@@ -1,0 +1,144 @@
+---
+title: "Homework 3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(haven)
+library(tidyverse)
+library(sandwich)
+library(lmtest)
+install.packages("car", dependencies = TRUE)
+library(car)
+df = read_dta('college.dta')
+view(df)
+```
+
+## probl?m 1
+(a)10000*2.142 = 214200, so rental price will approximately increases by 213200 thousand dollars.
+(b)-0.897*5 = -4.485, so rental price will approximately decreases by 4.485 thousand dollars.
+(c)-15.693 + 2.142 * 150000 - 0.897 * 5.4 = 32109.4632 < 350?0, so the company should not rent the office at this price
+(d)I would like to use the second function. Since the regression function with log will increase the sensative of data difference. And the data is more stable and weakens the collinearity and heter?scedasticity of the model.
+(e)
+The duration of rental at once should be one factor. Since usually the daily price of long rental is lower than short rental. The function should -constant * rental duration or 2.142 * sqfeer * (constant - rental duration)
+An?ther factor could be the distance between the office and subway station. The function should -constant * distance to subway station, just like the distance to city center. 
+
+##Problem 4
+
+(a)
+```{r}
+college_avg <- df[!is.na(df$gpa), ]
+mean(college_avg$gpa)
+?college_male <- df %>% filter(male==1) 
+count(college_male)
+
+college_female <- df %>% filter(male==0) 
+?ount(college_female)
+
+college_fraternity <- df %>% filter(fraternity == 1)
+fraternity = count(college_fraternity)/length(df$fraternity)
+fraternity
+
+coll?ge_work <- df %>% filter(work == 1)
+work = count(college_work)/length(df$work)
+work?
+college_weed <- df %>% filter(marijuana == 1)
+weed = count(college_weed)/ length(df$marijuana)
+weed
+
+
+```
+
+b
+```{r}
+a <- df[is.na(df$gpa), ]
+count(a)
+a
+```
+
+c gpa= 3.28258?-0.10386*male-0.01123*work
+```{r}
+b <-lm(g?a~male+work,df)
+b
+summary(b)
+
+```
+
+
+d #d No, the coefficients of senior is need to update, gpa=3.253416 -0.144888*freshman-0.109744*sophomore-0.073981*junior 
+```{r}
+college_man <- df[!is.na(df$gpa), ]
+data_man <-?college_man %>% filter(male?=1)
+c<- lm(gpa~freshman+sophomore+junior+senior,data_man)
+c
+coeftest(c, vcov = vcovHC(c, type = "HC1"))
+```
+
+e gpa= 3.10853+0.03514*sophomore+0.07091*junior +0.14489*senior
+```{r}
+college_man <- df[!is.na(df$gpa), ]
+data_man <- ?ollege_man %>% fi?ter(male==1)
+d<- lm(gpa~sophomore+junior+senior,data_man)
+coeftest(d, vcov. = vcovHC(d,type = "HC1"))
+
+```
+f q=1
+```{r}
+data_man <- college_man %>% filter(male==1)
+f <- lm(gpa~sophomore+junior+senior, data_man)
+linearHypothesis(f,c('sopho?ore = junior'),wh?te.adj = "hc1")
+```
+g F3 at 5% level critical value=2.6. F = 9.6552>2.6, reject null hypothesis
+```{r}
+g <-lm(gpa~ sophomore+junior+senior, data_man )
+linearHypothesis(g, c("sophomore=0","junior=0","senior=0"),white.adj = 'hc1')
+```
+h
+```?r}
+h <- lm(gpa~ag?+sophomore+junior+senior, data_man)
+coeftest(h, vcov = vcovHC(h, type = "HC1"))
+
+```
+
+i
+```{r}
+i<- lm(gpa~male+sophomore+junior+senior+work+marijuana+lightdrinker+moddrinker+heavydrinker, df)
+gpa_i = 3.28713+ 0.17226*1 - 0.03459*1-0.11258?1 
+gpa_i 
+
+linearHypothesis(i,  c('sophomore = junior'), white.adj = "hc1")
+```
+j F1 = 2.4172  F1<3.84 fail to reject null hypothesis at 5% significant level 
+k this model will explain less data than before
+```{r}
+i<- lm(gpa~male+sophomore+junior+senior+wo?k+marijuana+lightdrinker+moddrinker+heavydrinker, df)
+summary(i)
+```
+
+
+## problem 5
+(a)
+GPA =  b0 - b1 * drinks - b2 * drinks^2бнбн
+The GPA and drinks can be in logs since the drinks^2 will be change to 2 * log(drinks) which will simplify the equation. 
+A ?olynomial in drinks should be considered since when student drinks too much it should has extra influence on his life and GPA.
+
+(b)
+male_gpa = b0 + b1 * drinks + b2 * maile * drinks
+Ho: b2 = 0   H1: b2 != 0. 
+Do the t test for b2 and if we reject h0, it me?ns drinks inflences are different for male and female.
+
+(c)
+Based on the code below, the t value for b2 is 0.726 < 1.96 so we cannot reject H0 at 5% significant level.
+So we can say that  alcohol consumption affects GPA for men and women are the same at 5%?significant level.
+```{r}
+reg1 <- lm(gpa~ drinks+(drinks*male),df)
+summary(reg1)
+```
+(d)
+gpa = b0 + b1 * abstainer + b2 * lightdrinker + b3 * moddrinker + b4 * heavydrinker
+ use f test H0: B2=0 and B3=0 and B4=0 . H1: B2=!0 or B3!=0 or  B4!= 0 , q=3
+```{r}?d_5 <- lm(gpa~ abstainer+lightdrinker+moddrinker + heavydrinker, df)
+d_5
+linearHypothesis(d_5, c("lightdrinker","moddrinker=0","heavydrinker=0"),white.adj = 'hc1')
+```
+
