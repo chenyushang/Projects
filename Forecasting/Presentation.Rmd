@@ -1,0 +1,189 @@
+---
+title: "Presentation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(fpp2)
+library(urca)  
+#library(normwhn.test)
+library(ggplot2)
+library(quantmod)
+#library(rugarch)
+library(tidyverse)
+#library(fGar?h)
+library(Metrics)
+```
+
+```{r}
+ppl <- read.csv('NPPTTL.csv')
+une <- read.csv('MICH.csv')
+```
+
+```{r}
+ppl.ts <- ts(ppl$NPPTTL, start = c(2002,4), frequency = 12) 
+plot(ppl.ts, xlab = "Time", ylab = "NPPTTL",
+     main = "NPPTTL (04/2002 - 03/2022) ")
+```
+```{r}
+ggplot(data = ppl, aes(x = DATE, y = NPPTTL, group = 1)) +
+     geom_line(col = 'blue')
+```
+```{r}
+une.ts <- ts(une$MICH, start = c(2002,4), end = c(2022, 3), frequency = 12) 
+plot(une.ts, xlab = "Time", ylab = "MICH",
+     main = "MICH (04/2002 - 03/2022) ")
+```
+
+```{r}
+acf(ppl2.ts)
+pacf(ppl2.ts)
+```
+
+```{r}
+ppl2.ts = diff(ppl.ts, lag = 1)
+plot(ppl2.ts, xlab = "Time", ylab = "NPPTTL", ylim = c(-1000,1000),
+     main = "NPPTTL (04/2002 - 03/2022) ")
+  
+```
+```{r}
+#Data Partition
+nValid <- 60
+nTrain <- length(ppl2.ts) - nValid
+train.ts <- window(ppl2.ts,start = c(2002,4), end = c(2002,nTrain+4))
+valid.ts <- window(ppl2.ts, start = c(2002, nTrain+5), end = c(2002, nTrain+nValid+5))
+
+```
+```{r}
+tf<- decompose(train.ts)
+plot(tf)
+```
+
+```{r}
+#Linear Model no season
+ppl.fit <- tslm(train.ts ~ trend, lambda = 0)
+ppl.pred <- forecast(ppl.fit, h = nValid, level = 0)
+```
+```{r}
+#Plot results
+plot(train.ts, xlab = "Time",xlim = c(2002.4, 2022.4), ylab = "NPPTTL", ylim = c(-1000,1000),
+     bty = "l", main = "NPPTTL Fit and Forecast with Linear Model")
+lines(ppl.pred$mean, col = "red", lwd = 2)
+lines(ppl.pred$fitted, lwd = 2, col = "blue")
+lines(valid.ts, lwd = 2)
+
+forecast::accuracy(ppl.pred$fitted, train.ts)
+forecast::accuracy(ppl.pred$mean, valid.ts)
+```
+```{r}
+plot(ppl.fit$residuals)
+hist(ppl.fit$residuals, ylab = "Frequency", xlab = "Forecast Error", bty = "l", 
+     main = "Distribution of residuals from fitted model over training period")
+valid.err <- valid.ts - ppl.pred$mean
+plot(valid.err)
+hist(valid.err, ylab = "Frequency", xlab = "Forecast Error", bty = "l", 
+     main = "Distribution of residuals from forecast over validation period")
+```
+
+```{r}
+#Linear Model with season
+ppl.fit.season <- tslm(train.ts ~ trend+season, lambda = 0)
+ppl.pred.season <- forecast(ppl.fit.season, h = nValid, level = 0)
+```
+```{r}
+#Plot results
+plot(train.ts, xlab = "Time",xlim = c(2002.4, 2022.4), ylab = "NPPTTL", ylim = c(-1000,1000),
+     bty = "l", main = "NPPTTL Fit and Forecast with Linear Model")
+lines(ppl.pred.season$mean, col = "red", lwd = 2)
+lines(ppl.pred.season$fitted, lwd = 2, col = "blue")
+lines(valid.ts, lwd = 2)
+
+forecast::accuracy(ppl.pred.season$fitted, train.ts)
+forecast::accuracy(ppl.pred.season$mean, valid.ts)
+```
+```{r}
+plot(ppl.fit.season$residuals)
+hist(ppl.fit.season$residuals, ylab = "Frequency", xlab = "Forecast Error", bty = "l", 
+     main = "Distribution of residuals from fitted model over training period")
+valid.err <- valid.ts - ppl.pred.season$mean
+plot(valid.err)
+hist(valid.err, ylab = "Frequency", xlab = "Forecast Error", bty = "l", 
+     main = "Distribution of residuals from forecast over validation period")
+```
+```{r}
+#ARIMA fit
+arima.fit <- auto.arima(train.ts)
+summary(arima.fit)
+#ARIMA Test
+arima.pred <- forecast(arima.fit, h = nValid, level = 0)
+forecast::accuracy(arima.pred$mean, valid.ts)
+```
+```{r}
+#Plot Result
+plot(arima.pred, xlab = "Time", ylab = "NPPTTL", bty = "l",ylim = c(-1000, 1000),
+     main = "NPPTTL(04/2002 - 03/2022) forcast with ARIMA")
+lines(arima.pred$fitted, lwd = 2, col = "blue")
+lines(ppl2.ts)
+```
+```{r}
+#residual
+plot(arima.fit$residuals)
+hist(arima.fit$residuals, ylab = "Frequency", xlab = "Forecast Error", bty = "l", 
+     main = "Distribution of residuals from fitted model over training period")
+valid.err <- valid.ts - arima.pred$mean
+plot(valid.err)
+hist(valid.err, ylab = "Frequency", xlab = "Forecast Error", bty = "l", 
+     main = "Distribution of residuals from forecast over validation period")
+
+ggplot(data.frame(residuals = arima.fit$residuals),aes(residuals)) + 
+  geom_histogram(bins = 50,aes(y= ..density..),col = "red", fill = "red",alpha = 0.3)+
+  geom_density()
+```
+
+```{r}
+une.train.ts <- window(une.ts,start = c(2002,4), end = c(2002,nTrain+3))
+une.valid.ts <- window(une.ts, start = c(2002, nTrain+4), end = c(2002, nTrain+nValid+4))
+print(length(une.train.ts))
+print(length(train.ts))
+```
+
+```{r}
+#ARIMA with external Data
+arima.fit_ext <- auto.arima(train.ts, xreg = une.train.ts)
+summary(arima.fit_ext)
+arima.pred_ext <- forecast(arima.fit_ext, xreg = une.train.ts, h = nValid, level = 0)
+forecast::accuracy(arima.pred_ext$mean, valid.ts)
+```
+```{r}
+#Plot Result
+plot(arima.pred_ext, xlab = "Time", ylab = "NPPTTL", bty = "l",ylim = c(-1000, 1000), xlim = c(2002.4, 2022.3),
+     main = "NPPTTL(04/2002 - 03/2022) forcast with ARIMA")
+lines(arima.pred_ext$fitted, lwd = 2, col = "blue")
+lines(ppl2.ts)
+```
+```{r}
+#residual
+plot(arima.fit_ext$residuals)
+hist(arima.fit_ext$residuals, ylab = "Frequency", xlab = "Forecast Error", bty = "l", 
+     main = "Distribution of residuals from fitted model over training period")
+valid.err <- valid.ts - arima.pred_ext$mean
+plot(valid.err)
+hist(valid.err, ylab = "Frequency", xlab = "Forecast Error", bty = "l", 
+     main = "Distribution of residuals from forecast over validation period")
+
+ggplot(data.frame(residuals = arima.fit_ext$residuals),aes(residuals)) + 
+  geom_histogram(bins = 50,aes(y= ..density..),col = "red", fill = "red",alpha = 0.3)+
+  geom_density()
+```
+
+```{r}
+stlm.reg.fit <- stlm(train.ts, s.window = "periodic", xreg = une.train.ts, method = "arima")
+stlm.reg.pred <- forecast(stlm.reg.fit, xreg = une.valid.ts, h = nvalid)
+```
+
+```{r}
+plot(stlm.reg.pred, xlab = "Year", ylab = "Monthly Job Gain") 
+lines(ppl2.ts)
+```
+
+
